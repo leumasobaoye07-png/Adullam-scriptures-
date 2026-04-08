@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adullam Scripture — Display</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  background:#05050a;color:#f0f0f5;
+  width:100vw;height:100vh;overflow:hidden;
+  cursor:none;-webkit-font-smoothing:antialiased;
+  display:flex;align-items:center;justify-content:center;
+}
+.bg{
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 100% 70% at 50% 0%,rgba(41,151,255,.04) 0%,transparent 55%),
+    radial-gradient(ellipse 60% 60% at 80% 100%,rgba(212,175,106,.03) 0%,transparent 50%);
+}
+.idle{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;z-index:1;
+  transition:opacity .8s ease;
+}
+.idle-icon{font-size:44px;opacity:.15;}
+.idle-name{font-family:'Inter',sans-serif;font-size:15px;font-weight:300;color:rgba(255,255,255,.12);letter-spacing:4px;text-transform:uppercase;}
+.idle-church{font-size:11px;color:rgba(255,255,255,.06);letter-spacing:3px;text-transform:uppercase;}
+
+.vscreen{
+  position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:72px;
+  z-index:2;opacity:0;pointer-events:none;
+}
+.vscreen.in{animation:vIn .75s cubic-bezier(.16,1,.3,1) forwards;}
+.vscreen.out{animation:vOut .45s ease forwards;}
+@keyframes vIn{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:none;}}
+@keyframes vOut{from{opacity:1;transform:none;}to{opacity:0;transform:translateY(-10px);}}
+
+.accent-line{
+  width:0;height:2px;
+  background:linear-gradient(90deg,transparent,#d4af6a,transparent);
+  margin-bottom:44px;
+}
+.accent-line.show{animation:lineIn .6s ease .15s forwards;}
+@keyframes lineIn{from{width:0;opacity:0;}to{width:60px;opacity:1;}}
+
+.vtext{
+  font-family:'Playfair Display',Georgia,serif;
+  font-size:clamp(26px,4.5vw,56px);
+  font-weight:400;line-height:1.58;
+  text-align:center;color:#f0f0f5;
+  max-width:860px;letter-spacing:-.2px;
+  opacity:0;
+}
+.vtext.show{animation:textIn .65s ease .3s forwards;}
+.vtext.long{font-size:clamp(20px,3.2vw,40px);}
+.vtext.vlong{font-size:clamp(17px,2.6vw,32px);}
+@keyframes textIn{from{opacity:0;}to{opacity:1;}}
+
+.vref-wrap{
+  margin-top:40px;display:flex;align-items:center;gap:14px;
+  opacity:0;
+}
+.vref-wrap.show{animation:refIn .5s ease .6s forwards;}
+@keyframes refIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.rline{width:28px;height:1px;background:rgba(255,255,255,.18);}
+.vreftext{font-family:'Inter',sans-serif;font-size:clamp(13px,1.8vw,20px);font-weight:500;color:#d4af6a;letter-spacing:1px;}
+.vtrans{
+  font-family:'Inter',sans-serif;font-size:clamp(10px,1.2vw,14px);
+  font-weight:300;color:rgba(255,255,255,.25);letter-spacing:2px;
+  text-transform:uppercase;margin-top:8px;text-align:center;
+  opacity:0;
+}
+.vtrans.show{animation:refIn .5s ease .75s forwards;}
+
+.wm{position:fixed;bottom:24px;right:32px;font-size:11px;color:rgba(255,255,255,.05);letter-spacing:2px;font-family:'Inter',sans-serif;}
+.conn{position:fixed;bottom:18px;left:22px;display:flex;align-items:center;gap:6px;opacity:.25;font-size:10px;font-family:'Inter',sans-serif;color:rgba(255,255,255,.4);letter-spacing:1px;}
+.cdot{width:5px;height:5px;border-radius:50%;background:#30d158;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="idle" id="idle">
+  <div class="idle-icon">✦</div>
+  <div class="idle-name">Adullam Scripture</div>
+  <div class="idle-church">LSC Abuja</div>
+</div>
+
+<div class="vscreen" id="vscreen">
+  <div class="accent-line" id="aline"></div>
+  <div class="vtext" id="vtext"></div>
+  <div class="vref-wrap" id="vrefwrap">
+    <div class="rline"></div>
+    <span class="vreftext" id="vref"></span>
+    <div class="rline"></div>
+  </div>
+  <div class="vtrans" id="vtrans"></div>
+</div>
+
+<div class="wm">ADULLAM SCRIPTURE</div>
+<div class="conn"><div class="cdot"></div><span>CONNECTED</span></div>
+
+<script>
+const bc=new BroadcastChannel('adullam_sc');
+let showing=false;
+
+// Tell operator we're ready
+bc.postMessage({type:'PONG'});
+bc.postMessage({type:'READY'});
+
+bc.onmessage=e=>{
+  const m=e.data;
+  if(m.type==='PING') bc.postMessage({type:'PONG'});
+  if(m.type==='SHOW') showVerse(m.ref,m.text,m.trans);
+  if(m.type==='BLANK') blank();
+};
+
+function showVerse(ref,text,trans){
+  const vs=document.getElementById('vscreen');
+  const vt=document.getElementById('vtext');
+  const vr=document.getElementById('vref');
+  const vtrans=document.getElementById('vtrans');
+  const al=document.getElementById('aline');
+  const rw=document.getElementById('vrefwrap');
+  const idle=document.getElementById('idle');
+
+  // Set size class
+  vt.className='vtext';
+  if(text.length>300) vt.classList.add('vlong');
+  else if(text.length>180) vt.classList.add('long');
+
+  // Content
+  vt.textContent=text;
+  vr.textContent=ref;
+  vtrans.textContent=trans||'';
+
+  if(showing){
+    // Animate out then back in
+    vs.className='vscreen out';
+    setTimeout(()=>{
+      resetAnims();
+      vs.className='vscreen in';
+      idle.style.opacity='0';
+      showing=true;
+    },430);
+  } else {
+    resetAnims();
+    idle.style.opacity='0';
+    vs.className='vscreen in';
+    showing=true;
+  }
+}
+
+function resetAnims(){
+  const vs=document.getElementById('vscreen');
+  const al=document.getElementById('aline');
+  const vt=document.getElementById('vtext');
+  const rw=document.getElementById('vrefwrap');
+  const vtr=document.getElementById('vtrans');
+  // Remove show classes, force reflow, re-add
+  [al,vt,rw,vtr].forEach(el=>el.classList.remove('show'));
+  void vs.offsetWidth;
+  setTimeout(()=>al.classList.add('show'),0);
+  setTimeout(()=>vt.classList.add('show'),0);
+  setTimeout(()=>rw.classList.add('show'),0);
+  setTimeout(()=>vtr.classList.add('show'),0);
+}
+
+function blank(){
+  const vs=document.getElementById('vscreen');
+  const idle=document.getElementById('idle');
+  vs.className='vscreen out';
+  setTimeout(()=>{
+    vs.className='vscreen';
+    idle.style.opacity='1';
+    showing=false;
+  },430);
+}
+</script>
+</body>
+</html>
