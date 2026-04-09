@@ -484,11 +484,13 @@ async function setupRecog(){
     }
     if(final){
       fullText+=final;
-      // Keep fullText manageable — trim to last 2000 chars so AI snippet stays fresh
       if(fullText.length>2000) fullText=fullText.slice(-2000);
       renderT(fullText,interim);
+      // Detect on the new chunk immediately (catches verse refs as they're spoken)
+      detectVerse(fullText);
+      // Also debounce for AI fallback on stragglers
       clearTimeout(debTimer);
-      debTimer=setTimeout(()=>detectVerse(fullText),700);
+      debTimer=setTimeout(()=>aiDetectVerse(fullText),1200);
     } else renderT(fullText,interim);
   };
 
@@ -710,7 +712,7 @@ function detectVerse(text){
     }
     return;
   }
-  aiDetectVerse(text);
+  // No regex match — AI fallback handled by debounced timer in onresult
 }
 
 // ── AI DETECTION (Puter.js) ──
