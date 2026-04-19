@@ -1221,9 +1221,11 @@ function showLoading(ref){
   document.getElementById('vcard').className='vcard';
 }
 function showVerse(ref,text,conf){
-  if(curVerse){ curVerse.text=text; curVerse.ref=ref;
-  renderVersePicker(curVerse.bookId, curVerse.chapter, curVerse.verse, curVerse.endVerse||null);
-}
+  if(curVerse){
+    curVerse.text=text;
+    curVerse.ref=ref;
+    renderVersePicker(curVerse.bookId, curVerse.chapter, curVerse.verse, curVerse.endVerse||null);
+  }
   document.getElementById('vref').textContent=ref;
   document.getElementById('vbody').innerHTML=`<p class="vtext">${esc(text)}</p>`;
   document.getElementById('btn-send').disabled=false;
